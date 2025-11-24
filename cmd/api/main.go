@@ -12,27 +12,42 @@ import (
 )
 
 func main() {
-	//Load environment variable
+	// Load environment variables
 	cfg := config.Load()
 
-	//connect to postgres through GORM
-	databse := db.Connect(cfg)
-	db.Migrate(databse)
+	// Connect to database
+	database := db.Connect(cfg)
+	db.Migrate(database)
 
-	//check if argument 'seed' is passed
+	// Handle seeding if passed as argument
 	if len(os.Args) > 1 && os.Args[1] == "seed" {
-		seed.Run(databse)
+		seed.Run(database)
+		log.Println("Database seeded successfully")
 		return
 	}
 
-	// Initialize router(mux)
-	r := router.NewRouter(databse)
+	// Setup router
+	r := router.NewRouter(database)
 
-	//Start server
-	log.Println("Server running on port: ", cfg.AppPort)
-	err := http.ListenAndServe(":"+cfg.AppPort, r)
+	// Handle PORT for cloud deployment
+	port := cfg.AppPort
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
+	if port == "" {
+		port = "8080"
+	}
+
+	// Add basic health check
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}).Methods("GET")
+
+	// Start server
+	log.Println("Server running on port:", port)
+	err := http.ListenAndServe(":"+port, r)
 	if err != nil {
 		log.Fatalf("could not start server: %v", err)
-		os.Exit(1)
 	}
 }
