@@ -1,0 +1,6 @@
+/.env
+/vendor/
+/bin/
+/*.log
+/.cache
+db_data/
